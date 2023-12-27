@@ -385,10 +385,16 @@ class StiebelEltronModbusWPMDataCoordinator(StiebelEltronModbusDataCoordinator):
                 result[ACTIVE_ERROR] = "no error"
             else:
                 result[ACTIVE_ERROR] = f"error {error}"
-            decoder.skip_bytes(12)
-            hk3pump = decoder.decode_16bit_uint()
-            if hk3pump != 32768:
-                result[PUMP_ON_HK3] = hk3pump
+            decoder.skip_bytes(8)
+            hkpump1 = decoder.decode_16bit_uint()
+            if hkpump1 != 32768:
+                result[PUMP_ON_HK1] = hkpump1
+            hkpump2 = decoder.decode_16bit_uint()
+            if hkpump2 != 32768:
+                result[PUMP_ON_HK2] = hkpump2
+            hkpump3 = decoder.decode_16bit_uint()
+            if hkpump3 != 32768:
+                result[PUMP_ON_HK3] = hkpump3
             decoder.skip_bytes(4)
             wwpump = decoder.decode_16bit_uint()
             if wwpump != 32768:
