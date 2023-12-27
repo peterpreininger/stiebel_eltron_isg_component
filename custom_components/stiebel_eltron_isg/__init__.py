@@ -25,16 +25,16 @@ from .const import (
     DOMAIN,
     PLATFORMS,
     ACTUAL_TEMPERATURE,
-    TARGET_TEMPERATURE,
-    ACTUAL_TEMPERATURE_FEK,
-    TARGET_TEMPERATURE_FEK,
-    ACTUAL_HUMIDITY,
-    DEWPOINT_TEMPERATURE,
-    OUTDOOR_TEMPERATURE,
-    ACTUAL_TEMPERATURE_HK1,
-    TARGET_TEMPERATURE_HK1,
-    ACTUAL_TEMPERATURE_HK2,
-    TARGET_TEMPERATURE_HK2,
+    TARGET_TEMPERATURE,				
+    ACTUAL_TEMPERATURE_FEK,			# 503
+    TARGET_TEMPERATURE_FEK,			# 504
+    ACTUAL_HUMIDITY,				# 505
+    DEWPOINT_TEMPERATURE,			# 506
+    OUTDOOR_TEMPERATURE,			# 507
+    ACTUAL_TEMPERATURE_HK1,			# 508
+    TARGET_TEMPERATURE_HK1,			# 509
+    ACTUAL_TEMPERATURE_HK2,			# 510
+    TARGET_TEMPERATURE_HK2,			# 512
     ACTUAL_TEMPERATURE_BUFFER,
     TARGET_TEMPERATURE_BUFFER,
     ACTUAL_TEMPERATURE_WATER,
@@ -74,6 +74,8 @@ from .const import (
     IS_COOLING,
     PUMP_ON_HK1,
     PUMP_ON_HK2,
+    PUMP_ON_HK3,
+    PUMP_ON_WW,
     COMPRESSOR_ON,
     CIRCULATION_PUMP,
     SWITCHING_PROGRAM_ENABLED,
@@ -98,6 +100,9 @@ from .const import (
     COMFORT_TEMPERATURE_TARGET_HK2,
     ECO_TEMPERATURE_TARGET_HK2,
     HEATING_CURVE_RISE_HK2,
+    COMFORT_TEMPERATURE_TARGET_HK3,
+    ECO_TEMPERATURE_TARGET_HK3,
+    HEATING_CURVE_RISE_HK3,
     COMFORT_WATER_TEMPERATURE_TARGET,
     ECO_WATER_TEMPERATURE_TARGET,
     AREA_COOLING_TARGET_ROOM_TEMPERATURE,
@@ -157,10 +162,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     coordinator = (
         StiebelEltronModbusWPMDataCoordinator(hass, name, host, port, scan_interval)
-        if model >= 390
-        else StiebelEltronModbusLWZDataCoordinator(
-            hass, name, host, port, scan_interval
-        )
     )
     await coordinator.async_config_entry_first_refresh()
 
@@ -351,6 +352,7 @@ class StiebelEltronModbusWPMDataCoordinator(StiebelEltronModbusDataCoordinator):
             **self.read_modbus_system_state(),
             **self.read_modbus_system_values(),
             **self.read_modbus_system_paramter(),
+            **self.read_modbus_system_parameter_add(),
             **self.read_modbus_sg_ready(),
         }
         return result
@@ -375,7 +377,6 @@ class StiebelEltronModbusWPMDataCoordinator(StiebelEltronModbusDataCoordinator):
             result[IS_COOLING] = (state & (1 << 8)) != 0
             result[EVAPORATOR_DEFROST] = (state & (1 << 9)) != 0
 
-
             decoder.skip_bytes(4)
             result[ERROR_STATUS] = decoder.decode_16bit_uint()
             decoder.skip_bytes(4)
@@ -384,7 +385,15 @@ class StiebelEltronModbusWPMDataCoordinator(StiebelEltronModbusDataCoordinator):
                 result[ACTIVE_ERROR] = "no error"
             else:
                 result[ACTIVE_ERROR] = f"error {error}"
-            decoder.skip_bytes(24)
+            decoder.skip_bytes(12)
+            hk3pump = decoder.decode_16bit_uint()
+            if hk3pump != 32768:
+                result[PUMP_ON_HK3] = hk3pump
+            decoder.skip_bytes(4)
+            wwpump = decoder.decode_16bit_uint()
+            if wwpump != 32768:
+                result[PUMP_ON_WW] = wwpump
+            decoder.skip_bytes(4)
             circulation_pump = decoder.decode_16bit_uint()
             if circulation_pump != 32768:
                 result[CIRCULATION_PUMP] = circulation_pump
@@ -476,7 +485,7 @@ class StiebelEltronModbusWPMDataCoordinator(StiebelEltronModbusDataCoordinator):
             )
             decoder.skip_bytes(84)
 
-            result[ACTUAL_ROOM_TEMPERATURE_HK1] = get_isg_scaled_value(
+            result[ACTUAL_ROOM_TEMPERATURE_HK1] = get_isg_scaled_value(				# 584
                 decoder.decode_16bit_int()
             )
             result[TARGET_ROOM_TEMPERATURE_HK1] = get_isg_scaled_value(
@@ -550,6 +559,26 @@ class StiebelEltronModbusWPMDataCoordinator(StiebelEltronModbusDataCoordinator):
             )
             result["system_paramaters"] = list(inverter_data.registers)
         return result
+    
+    def read_modbus_system_parameter_add(self) -> dict:
+        """Read the additional system paramters from the ISG."""
+        result = {}
+        inverter_data = self.read_holding_registers(slave=1, address=1550, count=3)
+        if not inverter_data.isError():
+            decoder = BinaryPayloadDecoder.fromRegisters(
+                inverter_data.registers, byteorder=Endian.BIG
+            )
+            result[COMFORT_TEMPERATURE_TARGET_HK3] = get_isg_scaled_value(
+                decoder.decode_16bit_int()
+            )
+            result[ECO_TEMPERATURE_TARGET_HK3] = get_isg_scaled_value(
+                decoder.decode_16bit_int()
+            )
+            result[HEATING_CURVE_RISE_HK3] = get_isg_scaled_value(
+                decoder.decode_16bit_int(), 100
+            )
+            result["system_paramaters"] = list(inverter_data.registers)
+        return result
 
     def read_modbus_energy(self) -> dict:
         """Read the energy consumption related values from the ISG."""
@@ -613,6 +642,12 @@ class StiebelEltronModbusWPMDataCoordinator(StiebelEltronModbusDataCoordinator):
             self.write_register(address=1505, value=int(value * 10), slave=1)
         elif key == HEATING_CURVE_RISE_HK2:
             self.write_register(address=1506, value=int(value * 100), slave=1)
+        elif key == COMFORT_TEMPERATURE_TARGET_HK3:
+            self.write_register(address=1550, value=int(value * 10), slave=1)
+        elif key == ECO_TEMPERATURE_TARGET_HK3:
+            self.write_register(address=1551, value=int(value * 10), slave=1)
+        elif key == HEATING_CURVE_RISE_HK3:
+            self.write_register(address=1552, value=int(value * 100), slave=1)
         elif key == COMFORT_WATER_TEMPERATURE_TARGET:
             self.write_register(address=1509, value=int(value * 10), slave=1)
         elif key == ECO_WATER_TEMPERATURE_TARGET:
@@ -635,252 +670,5 @@ class StiebelEltronModbusWPMDataCoordinator(StiebelEltronModbusDataCoordinator):
         """Reset the heat pump."""
         _LOGGER.debug("Reset the heat pump")
         self.write_register(address=1519, value=3, slave=1)
-
-
-class StiebelEltronModbusLWZDataCoordinator(StiebelEltronModbusDataCoordinator):
-    """Thread safe wrapper class for pymodbus. Communicates with LWZ or LWA controller models."""
-
-    def read_modbus_data(self) -> dict:
-        """Read the ISG data through modbus."""
-        result = {
-            **self.read_modbus_energy(),
-            **self.read_modbus_system_state(),
-            **self.read_modbus_system_values(),
-            **self.read_modbus_system_paramter(),
-            **self.read_modbus_sg_ready(),
-        }
-        return result
-
-    def read_modbus_system_state(self) -> dict:
-        """Read the system state values from the ISG."""
-        result = {}
-        inverter_data = self.read_input_registers(slave=1, address=2000, count=5)
-        if not inverter_data.isError():
-            decoder = BinaryPayloadDecoder.fromRegisters(
-                inverter_data.registers, byteorder=Endian.BIG
-            )
-            state = decoder.decode_16bit_uint()
-            result[SWITCHING_PROGRAM_ENABLED] = (state & 1) != 0
-            result[COMPRESSOR_ON] = (state & (1 << 1)) != 0
-            result[IS_HEATING] = (state & (1 << 2)) != 0
-            result[IS_COOLING] = (state & (1 << 3)) != 0
-            result[IS_HEATING_WATER] = (state & (1 << 4)) != 0
-            result[ELECTRIC_REHEATING] = (state & (1 << 5)) != 0
-            result[SERVICE] = (state & (1 << 6)) != 0
-            result[POWER_OFF] = (state & (1 << 7)) != 0
-            result[FILTER] = (state & (1 << 8)) != 0
-            result[VENTILATION] = (state & (1 << 9)) != 0
-
-            result[PUMP_ON_HK1] = (state & (1 << 10)) != 0
-
-            result[EVAPORATOR_DEFROST] = (state & (1 << 11)) != 0
-            result[FILTER_EXTRACT_AIR] = (state & (1 << 12)) != 0
-            result[FILTER_VENTILATION_AIR] = (state & (1 << 13)) != 0
-            result[HEAT_UP_PROGRAM] = (state & (1 << 14)) != 0
-
-            result[ERROR_STATUS] = decoder.decode_16bit_uint()
-            decoder.skip_bytes(4)
-            state = decoder.decode_16bit_uint()
-            result[IS_SUMMER_MODE] = (state & 1) != 0
-        return result
-
-    def read_modbus_system_values(self) -> dict:
-        """Read the system related values from the ISG."""
-        result = {}
-        inverter_data = self.read_input_registers(slave=1, address=0, count=40)
-        if not inverter_data.isError():
-            decoder = BinaryPayloadDecoder.fromRegisters(
-                inverter_data.registers, byteorder=Endian.BIG
-            )
-            result[ACTUAL_TEMPERATURE] = get_isg_scaled_value(
-                decoder.decode_16bit_int()
-            )
-            result[TARGET_TEMPERATURE] = get_isg_scaled_value(
-                decoder.decode_16bit_int()
-            )
-            decoder.skip_bytes(2)  # Humidity HK1
-            result[ACTUAL_TEMPERATURE_FEK] = get_isg_scaled_value(
-                decoder.decode_16bit_int()
-            )
-            result[TARGET_TEMPERATURE_FEK] = get_isg_scaled_value(
-                decoder.decode_16bit_int()
-            )
-            result[ACTUAL_HUMIDITY] = get_isg_scaled_value(decoder.decode_16bit_int())
-            # result[DEWPOINT_TEMPERATURE] = get_isg_scaled_value(decoder.decode_16bit_int())
-            result[OUTDOOR_TEMPERATURE] = get_isg_scaled_value(
-                decoder.decode_16bit_int()
-            )
-            result[ACTUAL_TEMPERATURE_HK1] = get_isg_scaled_value(
-                decoder.decode_16bit_int()
-            )
-            result[TARGET_TEMPERATURE_HK1] = get_isg_scaled_value(
-                decoder.decode_16bit_int()
-            )
-            result[ACTUAL_TEMPERATURE_HK2] = get_isg_scaled_value(
-                decoder.decode_16bit_int()
-            )
-            result[TARGET_TEMPERATURE_HK2] = get_isg_scaled_value(
-                decoder.decode_16bit_int()
-            )
-            result[FLOW_TEMPERATURE] = get_isg_scaled_value(decoder.decode_16bit_int())
-            result[RETURN_TEMPERATURE] = get_isg_scaled_value(
-                decoder.decode_16bit_int()
-            )
-
-            result[HEATER_PRESSURE] = get_isg_scaled_value(decoder.decode_16bit_int())
-            result[VOLUME_STREAM] = get_isg_scaled_value(decoder.decode_16bit_int())
-            result[ACTUAL_TEMPERATURE_WATER] = get_isg_scaled_value(
-                decoder.decode_16bit_int()
-            )
-            result[TARGET_TEMPERATURE_WATER] = get_isg_scaled_value(
-                decoder.decode_16bit_int()
-            )
-            result[VENTILATION_AIR_ACTUAL_FAN_SPEED] = decoder.decode_16bit_uint()
-            result[VENTILATION_AIR_TARGET_FLOW_RATE] = decoder.decode_16bit_uint()
-            result[EXTRACT_AIR_ACTUAL_FAN_SPEED] = decoder.decode_16bit_uint()
-            result[EXTRACT_AIR_TARGET_FLOW_RATE] = decoder.decode_16bit_uint()
-            result[EXTRACT_AIR_HUMIDITY] = decoder.decode_16bit_uint()
-
-            decoder.skip_bytes(16) #
-            compressor_starts_high = decoder.decode_16bit_uint()
-            decoder.skip_bytes(4) #
-            compressor_starts_low = decoder.decode_16bit_uint()
-            if compressor_starts_high == 32768:
-                result[COMPRESSOR_STARTS] = compressor_starts_high
-            else:
-                result[COMPRESSOR_STARTS] = compressor_starts_low + compressor_starts_high * 1000
-            result["system_values"] = list(inverter_data.registers)
-        return result
-
-    def read_modbus_system_paramter(self) -> dict:
-        """Read the system paramters from the ISG."""
-        result = {}
-        inverter_data = self.read_holding_registers(slave=1, address=1000, count=25)
-        if not inverter_data.isError():
-            decoder = BinaryPayloadDecoder.fromRegisters(
-                inverter_data.registers, byteorder=Endian.BIG
-            )
-            result[OPERATION_MODE] = decoder.decode_16bit_uint()
-            result[COMFORT_TEMPERATURE_TARGET_HK1] = get_isg_scaled_value(
-                decoder.decode_16bit_int()
-            )
-            result[ECO_TEMPERATURE_TARGET_HK1] = get_isg_scaled_value(
-                decoder.decode_16bit_int()
-            )
-            decoder.skip_bytes(2)
-            result[COMFORT_TEMPERATURE_TARGET_HK2] = get_isg_scaled_value(
-                decoder.decode_16bit_int()
-            )
-            result[ECO_TEMPERATURE_TARGET_HK2] = get_isg_scaled_value(
-                decoder.decode_16bit_int()
-            )
-            decoder.skip_bytes(2)
-            result[HEATING_CURVE_RISE_HK1] = get_isg_scaled_value(
-                decoder.decode_16bit_int(), 100
-            )
-            decoder.skip_bytes(2)
-            result[HEATING_CURVE_RISE_HK2] = get_isg_scaled_value(
-                decoder.decode_16bit_int(), 100
-            )
-            decoder.skip_bytes(2)
-            result[COMFORT_WATER_TEMPERATURE_TARGET] = get_isg_scaled_value(
-                decoder.decode_16bit_int()
-            )
-            result[ECO_WATER_TEMPERATURE_TARGET] = get_isg_scaled_value(
-                decoder.decode_16bit_int()
-            )
-            decoder.skip_bytes(8)
-            result[FAN_LEVEL_DAY] = decoder.decode_16bit_uint()
-            result[FAN_LEVEL_NIGHT] = decoder.decode_16bit_uint()
-            result["system_paramaters"] = list(inverter_data.registers)
-        return result
-
-    def read_modbus_energy(self) -> dict:
-        """Read the energy consumption related values from the ISG."""
-        result = {}
-        inverter_data = self.read_input_registers(slave=1, address=3000, count=32)
-        if not inverter_data.isError():
-            decoder = BinaryPayloadDecoder.fromRegisters(
-                inverter_data.registers, byteorder=Endian.BIG
-            )
-            produced_heating_today = decoder.decode_16bit_uint()
-            produced_heating_total_low = decoder.decode_16bit_uint()
-            produced_heating_total_high = decoder.decode_16bit_uint()
-            produced_water_today = decoder.decode_16bit_uint()
-            produced_water_total_low = decoder.decode_16bit_uint()
-            produced_water_total_high = decoder.decode_16bit_uint()
-
-            result[PRODUCED_HEATING_TODAY] = produced_heating_today
-            result[PRODUCED_HEATING_TOTAL] = (
-                produced_heating_total_high * 1000 + produced_heating_total_low
-            )
-            result[PRODUCED_WATER_HEATING_TODAY] = produced_water_today
-            result[PRODUCED_WATER_HEATING_TOTAL] = (
-                produced_water_total_high * 1000 + produced_water_total_low
-            )
-
-            decoder.skip_bytes(30)
-            consumed_heating_today = decoder.decode_16bit_uint()
-            consumed_heating_total_low = decoder.decode_16bit_uint()
-            consumed_heating_total_high = decoder.decode_16bit_uint()
-            consumed_water_today = decoder.decode_16bit_uint()
-            consumed_water_total_low = decoder.decode_16bit_uint()
-            consumed_water_total_high = decoder.decode_16bit_uint()
-            result[CONSUMED_HEATING_TODAY] = consumed_heating_today
-            result[CONSUMED_HEATING_TOTAL] = (
-                consumed_heating_total_high * 1000 + consumed_heating_total_low
-            )
-            result[CONSUMED_WATER_HEATING_TODAY] = consumed_water_today
-            result[CONSUMED_WATER_HEATING_TOTAL] = (
-                consumed_water_total_high * 1000 + consumed_water_total_low
-            )
-            result[COMPRESSOR_HEATING] = decoder.decode_16bit_uint()
-            decoder.skip_bytes(2)
-            result[COMPRESSOR_HEATING_WATER] = decoder.decode_16bit_uint()
-            result[ELECTRICAL_BOOSTER_HEATING] = decoder.decode_16bit_uint()
-            result[ELECTRICAL_BOOSTER_HEATING_WATER] = decoder.decode_16bit_uint()
-
-        return result
-
-    def set_data(self, key, value) -> None:
-        """Write the data to the modbus."""
-        if key == SG_READY_ACTIVE:
-            self.write_register(address=4000, value=value, slave=1)
-        elif key == SG_READY_INPUT_1:
-            self.write_register(address=4001, value=value, slave=1)
-        elif key == SG_READY_INPUT_2:
-            self.write_register(address=4002, value=value, slave=1)
-        elif key == OPERATION_MODE:
-            self.write_register(address=1000, value=value, slave=1)
-        elif key == COMFORT_TEMPERATURE_TARGET_HK1:
-            self.write_register(address=1001, value=int(value * 10), slave=1)
-        elif key == ECO_TEMPERATURE_TARGET_HK1:
-            self.write_register(address=1002, value=int(value * 10), slave=1)
-        elif key == HEATING_CURVE_RISE_HK1:
-            self.write_register(address=1007, value=int(value * 100), slave=1)
-
-        elif key == COMFORT_TEMPERATURE_TARGET_HK2:
-            self.write_register(address=1004, value=int(value * 10), slave=1)
-        elif key == ECO_TEMPERATURE_TARGET_HK2:
-            self.write_register(address=1005, value=int(value * 10), slave=1)
-        elif key == HEATING_CURVE_RISE_HK2:
-            self.write_register(address=1009, value=int(value * 100), slave=1)
-
-        elif key == COMFORT_WATER_TEMPERATURE_TARGET:
-            self.write_register(address=1011, value=int(value * 10), slave=1)
-        elif key == ECO_WATER_TEMPERATURE_TARGET:
-            self.write_register(address=1012, value=int(value * 10), slave=1)
-        elif key == FAN_LEVEL_DAY:
-            self.write_register(address=1017, value=int(value), slave=1)
-        elif key == FAN_LEVEL_NIGHT:
-            self.write_register(address=1018, value=int(value), slave=1)
-        else:
-            return
-        self.data[key] = value
-
-    async def async_reset_heatpump(self) -> None:
-        """Reset the heat pump."""
-        _LOGGER.debug("Reset the heat pump is not implemented of LWZ/LWA")
-
 
 
