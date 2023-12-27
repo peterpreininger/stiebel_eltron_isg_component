@@ -368,7 +368,7 @@ class StiebelEltronModbusWPMDataCoordinator(StiebelEltronModbusDataCoordinator):
             decoder = BinaryPayloadDecoder.fromRegisters(
                 inverter_data.registers, byteorder=Endian.BIG
             )
-            state = decoder.decode_16bit_uint()
+            state = decoder.decode_16bit_uint()			# 2501
             result[PUMP_ON_HK1] = (state & (1 << 0)) != 0
             result[PUMP_ON_HK2] = (state & (1 << 1)) != 0
             result[HEAT_UP_PROGRAM] = (state & (1 << 2)) != 0
@@ -381,14 +381,14 @@ class StiebelEltronModbusWPMDataCoordinator(StiebelEltronModbusDataCoordinator):
             result[EVAPORATOR_DEFROST] = (state & (1 << 9)) != 0
 
             decoder.skip_bytes(4)
-            result[ERROR_STATUS] = decoder.decode_16bit_uint()
+            result[ERROR_STATUS] = decoder.decode_16bit_uint()	# 2504
             decoder.skip_bytes(4)
-            error = decoder.decode_16bit_uint()
+            error = decoder.decode_16bit_uint()					# 2507
             if error == 32768:
                 result[ACTIVE_ERROR] = "no error"
             else:
                 result[ACTIVE_ERROR] = f"error {error}"
-            decoder.skip_bytes(8)
+            decoder.skip_bytes(2)
             hkpump1 = decoder.decode_16bit_uint()
             if hkpump1 != 32768:
                 result[PUMP_ON_HK1] = hkpump1
@@ -402,7 +402,7 @@ class StiebelEltronModbusWPMDataCoordinator(StiebelEltronModbusDataCoordinator):
             wwpump = decoder.decode_16bit_uint()
             if wwpump != 32768:
                 result[PUMP_ON_WW] = wwpump
-            decoder.skip_bytes(4)
+            decoder.skip_bytes(6)
             circulation_pump = decoder.decode_16bit_uint()
             if circulation_pump != 32768:
                 result[CIRCULATION_PUMP] = circulation_pump
