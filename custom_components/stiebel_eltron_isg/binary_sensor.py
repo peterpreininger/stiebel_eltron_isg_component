@@ -8,7 +8,7 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.helpers.entity import EntityCategory
 
 from .entity import StiebelEltronISGEntity
-from .const import DOMAIN, IS_HEATING, IS_COOLING, IS_HEATING_WATER, IS_SUMMER_MODE, PUMP_ON_HK1, PUMP_ON_HK2, PUMP_ON_HK3, PUMP_ON_WW, COMPRESSOR_ON, SWITCHING_PROGRAM_ENABLED, ELECTRIC_REHEATING, SERVICE, POWER_OFF, FILTER, VENTILATION, EVAPORATOR_DEFROST, FILTER_EXTRACT_AIR, FILTER_VENTILATION_AIR, HEAT_UP_PROGRAM, NHZ_STAGES_RUNNING, ERROR_STATUS
+from .const import DOMAIN, IS_HEATING, IS_COOLING, IS_HEATING_WATER, IS_SUMMER_MODE, PUMP_ON_HK1, PUMP_ON_HK2, PUMP_ON_HK3, PUMP_ON_PUFFER, PUMP_ON_WW, COMPRESSOR_ON, SWITCHING_PROGRAM_ENABLED, ELECTRIC_REHEATING, SERVICE, POWER_OFF, FILTER, VENTILATION, EVAPORATOR_DEFROST, FILTER_EXTRACT_AIR, FILTER_VENTILATION_AIR, HEAT_UP_PROGRAM, NHZ_STAGES_RUNNING, ERROR_STATUS
 
 BINARY_SENSOR_TYPES = [
     BinarySensorEntityDescription(
@@ -50,6 +50,12 @@ BINARY_SENSOR_TYPES = [
     BinarySensorEntityDescription(
         name="Pump HK3",
         key=PUMP_ON_HK3,
+        icon="mdi:pump",
+        has_entity_name=True,
+    ),
+    BinarySensorEntityDescription(
+        name="Pump Puffer",
+        key=PUMP_ON_PUFFER,
         icon="mdi:pump",
         has_entity_name=True,
     ),

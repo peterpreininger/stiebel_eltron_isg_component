@@ -77,6 +77,7 @@ from .const import (
     PUMP_ON_HK1,
     PUMP_ON_HK2,
     PUMP_ON_HK3,
+    PUMP_ON_PUFFER,
     PUMP_ON_WW,
     COMPRESSOR_ON,
     CIRCULATION_PUMP,
@@ -389,21 +390,24 @@ class StiebelEltronModbusWPMDataCoordinator(StiebelEltronModbusDataCoordinator):
             else:
                 result[ACTIVE_ERROR] = f"error {error}"
             decoder.skip_bytes(2)
-            hkpump1 = decoder.decode_16bit_uint()
+            hkpump1 = decoder.decode_16bit_uint()				# 2509
             if hkpump1 != 32768:
                 result[PUMP_ON_HK1] = hkpump1
-            hkpump2 = decoder.decode_16bit_uint()
+            hkpump2 = decoder.decode_16bit_uint()				# 2510
             if hkpump2 != 32768:
                 result[PUMP_ON_HK2] = hkpump2
-            hkpump3 = decoder.decode_16bit_uint()
+            hkpump3 = decoder.decode_16bit_uint()				# 2511
             if hkpump3 != 32768:
                 result[PUMP_ON_HK3] = hkpump3
-            decoder.skip_bytes(4)
-            wwpump = decoder.decode_16bit_uint()
+            pufferpump = decoder.decode_16bit_uint()			# 2512
+            if pufferpump != 32768:
+                result[PUMP_ON_PUFFER] = pufferpump
+            decoder.skip_bytes(2)
+            wwpump = decoder.decode_16bit_uint()				# 2514
             if wwpump != 32768:
                 result[PUMP_ON_WW] = wwpump
-            decoder.skip_bytes(6)
-            circulation_pump = decoder.decode_16bit_uint()
+            decoder.skip_bytes(4)
+            circulation_pump = decoder.decode_16bit_uint()		# 2517
             if circulation_pump != 32768:
                 result[CIRCULATION_PUMP] = circulation_pump
 
