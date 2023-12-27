@@ -1,4 +1,4 @@
-# Stiebel Eltron ISG integration
+# Stiebel Eltron ISG integration - WPL47
 
 [![GitHub Release][releases-shield]][releases]
 [![GitHub Activity][commits-shield]][commits]
