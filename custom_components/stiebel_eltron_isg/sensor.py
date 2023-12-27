@@ -30,6 +30,8 @@ from .const import (
     TARGET_TEMPERATURE_HK1,
     ACTUAL_TEMPERATURE_HK2,
     TARGET_TEMPERATURE_HK2,
+    ACTUAL_TEMPERATURE_HK3,
+    TARGET_TEMPERATURE_HK3,
     FLOW_TEMPERATURE,
     FLOW_TEMPERATURE_NHZ,
     RETURN_TEMPERATURE,
@@ -149,6 +151,12 @@ SYSTEM_VALUES_SENSOR_TYPES = [
     ),
     create_temperature_entity_description(
         "Target Temperature HK 2", TARGET_TEMPERATURE_HK2
+    ),
+    create_temperature_entity_description(
+        "Actual Temperature HK 3", ACTUAL_TEMPERATURE_HK3
+    ),
+    create_temperature_entity_description(
+        "Target Temperature HK 3", TARGET_TEMPERATURE_HK3
     ),
     create_temperature_entity_description(
         "Actual Room Temperature HK 1", ACTUAL_ROOM_TEMPERATURE_HK1

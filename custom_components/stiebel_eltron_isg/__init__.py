@@ -35,6 +35,8 @@ from .const import (
     TARGET_TEMPERATURE_HK1,			# 509
     ACTUAL_TEMPERATURE_HK2,			# 510
     TARGET_TEMPERATURE_HK2,			# 512
+    ACTUAL_TEMPERATURE_HK3,			# 610
+    TARGET_TEMPERATURE_HK3,			# 611
     ACTUAL_TEMPERATURE_BUFFER,
     TARGET_TEMPERATURE_BUFFER,
     ACTUAL_TEMPERATURE_WATER,
@@ -351,6 +353,7 @@ class StiebelEltronModbusWPMDataCoordinator(StiebelEltronModbusDataCoordinator):
             **self.read_modbus_energy(),
             **self.read_modbus_system_state(),
             **self.read_modbus_system_values(),
+            **self.read_modbus_system_values_add(),
             **self.read_modbus_system_paramter(),
             **self.read_modbus_system_parameter_add(),
             **self.read_modbus_sg_ready(),
@@ -509,6 +512,24 @@ class StiebelEltronModbusWPMDataCoordinator(StiebelEltronModbusDataCoordinator):
                 decoder.decode_16bit_int()
             )
             result[TARGET_ROOM_TEMPERATURE_HK3] = get_isg_scaled_value(
+                decoder.decode_16bit_int()
+            )
+            result["system_values"] = list(inverter_data.registers)
+        return result
+    
+    def read_modbus_system_values_add(self) -> dict:
+        """Read the system related values from the ISG."""
+        result = {}
+        inverter_data = self.read_input_registers(slave=1, address=609, count=2) 
+        if not inverter_data.isError():
+            decoder = BinaryPayloadDecoder.fromRegisters(
+                inverter_data.registers, byteorder=Endian.BIG
+            )
+
+            result[ACTUAL_TEMPERATURE_HK3] = get_isg_scaled_value(
+                decoder.decode_16bit_int()
+            )
+            result[TARGET_TEMPERATURE_HK3] = get_isg_scaled_value(
                 decoder.decode_16bit_int()
             )
             result["system_values"] = list(inverter_data.registers)
