@@ -129,11 +129,10 @@ CLIMATE_TYPES = [
 ]
 
 TEMPERATURE_KEY_MAP = {
-    CLIMATE_HK_1: [ECO_TEMPERATURE_TARGET_HK1, COMFORT_TEMPERATURE_TARGET_HK1],
-    CLIMATE_HK_2: [ECO_TEMPERATURE_TARGET_HK2, COMFORT_TEMPERATURE_TARGET_HK2],
-    CLIMATE_HK_3: [ECO_TEMPERATURE_TARGET_HK3, COMFORT_TEMPERATURE_TARGET_HK3],
+    CLIMATE_HK_1: [ECO_TEMPERATURE_TARGET_HK1, COMFORT_TEMPERATURE_TARGET_HK1, 'sensor.node_1_network_analog_7'],
+    CLIMATE_HK_2: [ECO_TEMPERATURE_TARGET_HK2, COMFORT_TEMPERATURE_TARGET_HK2, 'sensor.node_1_network_analog_8'],
+    CLIMATE_HK_3: [ECO_TEMPERATURE_TARGET_HK3, COMFORT_TEMPERATURE_TARGET_HK3, 'sensor.node_1_network_analog_9'],
 }
-
 
 async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the select platform."""
@@ -143,8 +142,6 @@ async def async_setup_entry(hass, entry, async_add_devices):
     for description in CLIMATE_TYPES:
         climate_entity = (
             StiebelEltronWPMClimateEntity(coordinator, entry, description)
-            if coordinator.is_wpm
-            else StiebelEltronLWZClimateEntity(coordinator, entry, description)
         )
         entities.append(climate_entity)
     async_add_devices(entities)
@@ -181,10 +178,10 @@ class StiebelEltronISGClimateEntity(StiebelEltronISGEntity, ClimateEntity):
     @property
     def current_temperature(self) -> float | None:
         """Return the current temperature."""
-        temperature = self.coordinator.data.get(ACTUAL_TEMPERATURE)
+        my_state = self.coordinator.hass.states.get(TEMPERATURE_KEY_MAP[self.entity_description.key][2])
         return (
-            temperature
-            if temperature is not None
+            float(my_state.state)
+            if my_state is not None
             else self.coordinator.data.get(ACTUAL_TEMPERATURE_FEK)
         )
 
@@ -263,59 +260,3 @@ class StiebelEltronWPMClimateEntity(StiebelEltronISGClimateEntity):
         self.coordinator.set_data(OPERATION_MODE, new_mode)
 
 
-class StiebelEltronLWZClimateEntity(StiebelEltronISGClimateEntity):
-    """stiebel_eltron_isg climate class for lwz."""
-
-    def __init__(self, coordinator, config_entry, description):
-        """Initialize the climate entity."""
-        self._attr_hvac_modes = [HVACMode.AUTO, HVACMode.OFF, HVACMode.HEAT]
-        self._attr_preset_modes = [
-            PRESET_READY,
-            PRESET_AUTO,
-            PRESET_MANUAL,
-            PRESET_ECO,
-            PRESET_COMFORT,
-            PRESET_WATER_HEATING,
-            PRESET_EMERGENCY,
-        ]
-        self._attr_fan_modes = [FAN_OFF, FAN_LOW, FAN_MEDIUM, FAN_HIGH]
-        super().__init__(coordinator, config_entry, description)
-        self._attr_supported_features = (
-            ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.FAN_MODE
-        )
-
-    @property
-    def hvac_mode(self) -> HVACMode | None:
-        """Return current operation ie. heat, cool, idle."""
-        return LWZ_TO_HA_HVAC.get(self.coordinator.data.get(OPERATION_MODE))
-
-    def set_hvac_mode(self, hvac_mode: HVACMode) -> None:
-        """Set new operation mode."""
-        new_mode = HA_TO_LWZ_HVAC.get(hvac_mode)
-        self.coordinator.set_data(OPERATION_MODE, new_mode)
-
-    @property
-    def preset_mode(self) -> str | None:
-        """Return current preset mode."""
-        return LWZ_TO_HA_PRESET.get(self.coordinator.data.get(OPERATION_MODE))
-
-    def set_preset_mode(self, preset_mode):
-        """Set new target preset mode."""
-        new_mode = HA_TO_LWZ_PRESET.get(preset_mode)
-        self.coordinator.set_data(OPERATION_MODE, new_mode)
-
-    @property
-    def fan_mode(self) -> str | None:
-        """Return the fan setting. Requires ClimateEntityFeature.FAN_MODE."""
-        if self.coordinator.data.get(OPERATION_MODE) == ECO_MODE:
-            return LWZ_TO_HA_FAN.get(self.coordinator.data.get(FAN_LEVEL_NIGHT))
-        else:
-            return LWZ_TO_HA_FAN.get(self.coordinator.data.get(FAN_LEVEL_DAY))
-
-    def set_fan_mode(self, fan_mode: str) -> None:
-        """Set new target fan mode."""
-        new_mode = HA_TO_LWZ_FAN.get(fan_mode)
-        if self.coordinator.data.get(OPERATION_MODE) == ECO_MODE:
-            self.coordinator.set_data(FAN_LEVEL_NIGHT, new_mode)
-        else:
-            self.coordinator.set_data(FAN_LEVEL_DAY, new_mode)

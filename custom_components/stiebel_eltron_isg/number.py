@@ -179,7 +179,7 @@ NUMBER_TYPES_WPM = [
      NumberEntityDescription(
         HEATING_CURVE_RISE_HK3,
         has_entity_name=True,
-        name="Heating Curve Rise HK2",
+        name="Heating Curve Rise HK3",
         icon="hass:thermometer",
         native_min_value=0,
         native_max_value=3,
