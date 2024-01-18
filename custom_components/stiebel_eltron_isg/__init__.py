@@ -2,6 +2,7 @@
 
 For more details about this integration, please refer to
 https://github.com/pail23/stiebel_eltron_isg
+Fork by Peter Preininger
 """
 from datetime import timedelta
 import logging
