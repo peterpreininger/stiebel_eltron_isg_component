@@ -3,21 +3,26 @@ import logging
 
 
 from homeassistant.components.sensor import (
-    STATE_CLASS_MEASUREMENT,
-    STATE_CLASS_TOTAL_INCREASING,
     SensorEntity,
     SensorEntityDescription,
+    SensorDeviceClass,
+    SensorStateClass,
 )
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.const import (
-    DEVICE_CLASS_ENERGY,
-    ENERGY_KILO_WATT_HOUR,
     PERCENTAGE,
     UnitOfTemperature,
     UnitOfPressure,
+    UnitOfEnergy,
 )
 
 from .const import (
+    ACTUAL_HUMIDITY_HK1,
+    ACTUAL_HUMIDITY_HK2,
+    ACTUAL_HUMIDITY_HK3,
+    DEWPOINT_TEMPERATURE_HK1,
+    DEWPOINT_TEMPERATURE_HK2,
+    DEWPOINT_TEMPERATURE_HK3,
     DOMAIN,
     ACTUAL_TEMPERATURE,
     TARGET_TEMPERATURE,
@@ -85,8 +90,21 @@ def create_temperature_entity_description(name, key):
         name=name,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         icon="hass:thermometer",
-        state_class=STATE_CLASS_MEASUREMENT,
+        state_class=SensorStateClass.MEASUREMENT,
         has_entity_name=True,
+    )
+
+
+def create_energy_entity_description(name, key, icon):
+    """Create an entry description for a energy sensor."""
+    return SensorEntityDescription(
+        key,
+        name=name,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        icon=icon,
+        has_entity_name=True,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        device_class=SensorDeviceClass.ENERGY,
     )
 
 
@@ -97,7 +115,7 @@ def create_humidity_entity_description(name, key):
         name=name,
         native_unit_of_measurement=PERCENTAGE,
         icon="hass:water-percent",
-        state_class=STATE_CLASS_MEASUREMENT,
+        state_class=SensorStateClass.MEASUREMENT,
         has_entity_name=True,
     )
 
@@ -109,7 +127,7 @@ def create_pressure_entity_description(name, key):
         name=name,
         native_unit_of_measurement=UnitOfPressure.BAR,
         icon="mdi:gauge",
-        state_class=STATE_CLASS_MEASUREMENT,
+        state_class=SensorStateClass.MEASUREMENT,
         has_entity_name=True,
     )
 
@@ -121,7 +139,7 @@ def create_volume_stream_entity_description(name, key):
         name=name,
         native_unit_of_measurement="l/min",
         icon="mdi:gauge",
-        state_class=STATE_CLASS_MEASUREMENT,
+        state_class=SensorStateClass.MEASUREMENT,
         has_entity_name=True,
     )
 
@@ -136,8 +154,20 @@ SYSTEM_VALUES_SENSOR_TYPES = [
         "Target Temperature FEK", TARGET_TEMPERATURE_FEK
     ),
     create_humidity_entity_description("Humidity", ACTUAL_HUMIDITY),
+    create_humidity_entity_description("Humidity HK 1", ACTUAL_HUMIDITY_HK1),
+    create_humidity_entity_description("Humidity HK 2", ACTUAL_HUMIDITY_HK2),
+    create_humidity_entity_description("Humidity HK 3", ACTUAL_HUMIDITY_HK3),
     create_temperature_entity_description(
         "Dew Point Temperature", DEWPOINT_TEMPERATURE
+    ),
+    create_temperature_entity_description(
+        "Dew Point Temperature HK 1", DEWPOINT_TEMPERATURE_HK1
+    ),
+    create_temperature_entity_description(
+        "Dew Point Temperature HK 2", DEWPOINT_TEMPERATURE_HK2
+    ),
+    create_temperature_entity_description(
+        "Dew Point Temperature HK 3", DEWPOINT_TEMPERATURE_HK3
     ),
     create_temperature_entity_description("Outdoor Temperature", OUTDOOR_TEMPERATURE),
     create_temperature_entity_description(
@@ -218,54 +248,46 @@ ENERGYMANAGEMENT_SENSOR_TYPES = [
 
 
 ENERGY_SENSOR_TYPES = [
-    [
+    create_energy_entity_description(
         "Produced Heating Today",
         PRODUCED_HEATING_TODAY,
-        "kWh",
         "mdi:radiator",
-    ],
-    [
+    ),
+    create_energy_entity_description(
         "Produced Heating Total",
         PRODUCED_HEATING_TOTAL,
-        "kWh",
         "mdi:radiator",
-    ],
-    [
+    ),
+    create_energy_entity_description(
         "Produced Water Heating Today",
         PRODUCED_WATER_HEATING_TODAY,
-        "kWh",
         "mdi:water-boiler",
-    ],
-    [
+    ),
+    create_energy_entity_description(
         "Produced Water Heating Total",
         PRODUCED_WATER_HEATING_TOTAL,
-        "kWh",
         "mdi:water-boiler",
-    ],
-    [
+    ),
+    create_energy_entity_description(
         "Consumed Heating Today",
         CONSUMED_HEATING_TODAY,
-        "kWh",
         "mdi:lightning-bolt",
-    ],
-    [
+    ),
+    create_energy_entity_description(
         "Consumed Heating Total",
         CONSUMED_HEATING_TOTAL,
-        "kWh",
         "mdi:lightning-bolt",
-    ],
-    [
+    ),
+    create_energy_entity_description(
         "Consumed Water Heating Today",
         CONSUMED_WATER_HEATING_TODAY,
-        "kWh",
         "mdi:lightning-bolt",
-    ],
-    [
+    ),
+    create_energy_entity_description(
         "Consumed Water Heating Total",
         CONSUMED_WATER_HEATING_TOTAL,
-        "kWh",
         "mdi:lightning-bolt",
-    ],
+    ),
 ]
 
 
@@ -282,7 +304,7 @@ COMPRESSOR_SENSOR_TYPES = [
         icon="mdi:heat-pump",
         has_entity_name=True,
         native_unit_of_measurement="h",
-        state_class=STATE_CLASS_MEASUREMENT,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         COMPRESSOR_HEATING_WATER,
@@ -290,7 +312,7 @@ COMPRESSOR_SENSOR_TYPES = [
         icon="mdi:heat-pump",
         has_entity_name=True,
         native_unit_of_measurement="h",
-        state_class=STATE_CLASS_MEASUREMENT,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         ELECTRICAL_BOOSTER_HEATING,
@@ -298,7 +320,7 @@ COMPRESSOR_SENSOR_TYPES = [
         icon="mdi:heating-coil",
         has_entity_name=True,
         native_unit_of_measurement="h",
-        state_class=STATE_CLASS_MEASUREMENT,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         ELECTRICAL_BOOSTER_HEATING_WATER,
@@ -306,7 +328,7 @@ COMPRESSOR_SENSOR_TYPES = [
         icon="mdi:heating-coil",
         has_entity_name=True,
         native_unit_of_measurement="h",
-        state_class=STATE_CLASS_MEASUREMENT,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
 ]
 
@@ -335,7 +357,7 @@ VENTILATION_SENSOR_TYPES = [
         icon="mdi:fan",
         has_entity_name=True,
     ),
-    create_humidity_entity_description("Extract air humidity", EXTRACT_AIR_HUMIDITY)
+    create_humidity_entity_description("Extract air humidity", EXTRACT_AIR_HUMIDITY),
 ]
 
 
@@ -360,19 +382,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
         )
         entities.append(sensor)
 
-    for meter_sensor_info in ENERGY_SENSOR_TYPES:
-        description = SensorEntityDescription(
-            name=f"{meter_sensor_info[0]}",
-            key=meter_sensor_info[1],
-            native_unit_of_measurement=meter_sensor_info[2],
-            icon=meter_sensor_info[3],
-            state_class=STATE_CLASS_MEASUREMENT,
-            has_entity_name=True,
-        )
-        if description.native_unit_of_measurement == ENERGY_KILO_WATT_HOUR:
-            description.state_class = STATE_CLASS_TOTAL_INCREASING
-            description.device_class = DEVICE_CLASS_ENERGY
-
+    for description in ENERGY_SENSOR_TYPES:
         sensor = StiebelEltronISGSensor(
             coordinator,
             entry,
