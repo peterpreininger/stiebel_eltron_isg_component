@@ -53,6 +53,7 @@ from .const import (
     LOW_PRESSURE,
     FLOW_TEMPERATURE,
     FLOW_TEMPERATURE_NHZ,
+    FORWARD_TEMPERATURE,
     RETURN_TEMPERATURE,
     PRODUCED_HEATING_TODAY,
     PRODUCED_HEATING_TOTAL,
@@ -215,7 +216,9 @@ class StiebelEltronModbusWPMDataCoordinator(StiebelEltronModbusDataCoordinator):
             result[FLOW_TEMPERATURE_NHZ] = get_isg_scaled_value(
                 decoder.decode_16bit_int()
             )
-            decoder.skip_bytes(2)
+            result[FORWARD_TEMPERATURE] = get_isg_scaled_value(
+                decoder.decode_16bit_int()
+            )
             result[RETURN_TEMPERATURE] = get_isg_scaled_value(
                 decoder.decode_16bit_int()
             )

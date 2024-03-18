@@ -39,6 +39,7 @@ from .const import (
     TARGET_TEMPERATURE_HK3,
     FLOW_TEMPERATURE,
     FLOW_TEMPERATURE_NHZ,
+    FORWARD_TEMPERATURE,
     RETURN_TEMPERATURE,
     ACTUAL_TEMPERATURE_BUFFER,
     TARGET_TEMPERATURE_BUFFER,
@@ -208,6 +209,7 @@ SYSTEM_VALUES_SENSOR_TYPES = [
     ),
     create_temperature_entity_description("Flow Temperature", FLOW_TEMPERATURE),
     create_temperature_entity_description("Flow Temperature NHZ", FLOW_TEMPERATURE_NHZ),
+    create_temperature_entity_description("Forward Temperature", FORWARD_TEMPERATURE),
     create_temperature_entity_description("Return Temperature", RETURN_TEMPERATURE),
     create_temperature_entity_description(
         "Actual Temperature Buffer", ACTUAL_TEMPERATURE_BUFFER
