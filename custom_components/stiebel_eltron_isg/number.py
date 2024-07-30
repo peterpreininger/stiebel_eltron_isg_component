@@ -102,7 +102,7 @@ NUMBER_TYPES_ALL = [
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         icon="hass:thermometer",
         native_min_value=10,
-        native_max_value=60,
+        native_max_value=75,
         native_step=0.1,
     ),
     NumberEntityDescription(
@@ -112,7 +112,7 @@ NUMBER_TYPES_ALL = [
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         icon="hass:thermometer",
         native_min_value=10,
-        native_max_value=60,
+        native_max_value=75,
         native_step=0.1,
     ),
     NumberEntityDescription(
